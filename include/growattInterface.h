@@ -36,8 +36,8 @@ class growattIF {
     {
       int enable, safetyfuncen, maxoutputactivepp, maxoutputreactivepp, modul;
       float  maxpower, voltnormal, startvoltage, gridvoltlowlimit, gridvolthighlimit, gridfreqlowlimit, gridfreqhighlimit, gridvoltlowconnlimit, gridvolthighconnlimit, gridfreqlowconnlimit, gridfreqhighconnlimit;
-      char firmware[6], controlfirmware[6];
-      char serial[10];
+      char firmware[7], controlfirmware[7];
+      char serial[11];
     };
 
     struct modbus_holding_registers modbussettings;
@@ -46,13 +46,15 @@ class growattIF {
     void initGrowatt();
     uint8_t writeRegister(uint16_t reg, uint16_t message);
     uint16_t readRegister(uint16_t reg);
-    uint8_t ReadInputRegisters(char* json);
-    uint8_t ReadHoldingRegisters(char* json);
+    uint8_t ReadInputRegisters();
+    void InputRegistersToJson(char* json);
+    uint8_t ReadHoldingRegisters();
+    void HoldingRegistersToJson(char* json);
     String sendModbusError(uint8_t result);
 
     // Error codes
     static const uint8_t Success    = 0x00;
-    static const uint8_t Continue   = 0xFF;
+    //static const uint8_t Continue   = 0xFF;
 
     // Growatt Holding registers
     static const uint8_t regOnOff           = 0;
