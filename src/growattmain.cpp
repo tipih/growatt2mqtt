@@ -2,7 +2,7 @@
 // Repo: https://github.com/nygma2004/growatt2mqtt
 // author: Csongor Varga, csongor.varga@gmail.com, some adaption by Helge
 // 1 Phase, 2 string inverter version such as MIN 3000 TL-XE, MIC 1500 TL-X
-
+//
 // Libraries:
 // - ModbusMaster by Doc Walker
 // - ArduinoOTA
