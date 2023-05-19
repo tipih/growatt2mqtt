@@ -22,7 +22,10 @@
 #include "settings.h"
 #include "growattInterface.h"
 #include <EEPROM.h>
-
+#ifdef AHTXX_SENSOR
+#include <AHT10.h>
+#include <Wire.h>
+#endif
 
 #define MAX_JSON_TOPIC_LENGTH 1024
 #define MAX_ROOT_TOPIC_LENGTH 80
@@ -31,6 +34,9 @@
 bool updateRegister;
 bool updateStatus;
 bool checkWifi;
+#ifdef AHTXX_SENSOR
+bool ath15_connected;
+#endif 
 
 #define CLIENT_ID_SIZE (sizeof(clientID) + 7) // 3*2 char = 6 + '-'
 char fullClientID[CLIENT_ID_SIZE];
@@ -39,6 +45,10 @@ os_timer_t myTimer;
 ESP8266WebServer server(80);
 WiFiClient espClient;
 PubSubClient mqtt(mqtt_server, mqtt_server_port, espClient);
+
+#ifdef AHTXX_SENSOR
+AHT10 sensorAHT15(AHT10_ADDRESS_0X38);
+#endif
 
 void callback(char *topic, byte *payload, unsigned int length);
 growattIF growattInterface(MAX485_RE_NEG, MAX485_DE, MAX485_RX, MAX485_TX);
@@ -405,94 +415,109 @@ void setup()
 #endif
 
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(1000);
-    Serial.print(F("."));
-    seconds++;
-    if (seconds > 180)
+    while (WiFi.status() != WL_CONNECTED)
     {
-      // reboot the ESP if cannot connect to wifi
-      ESP.restart();
+      delay(1000);
+      Serial.print(F("."));
+      seconds++;
+      if (seconds > 180)
+      {
+        // reboot the ESP if cannot connect to wifi
+        ESP.restart();
+      }
     }
-  }
-  seconds = 0;
-  Serial.println("");
-  Serial.println(F("Connected to wifi network"));
-  Serial.print(F("IP address: "));
-  Serial.println(WiFi.localIP());
-  Serial.print(F("Signal [RSSI]: "));
-  Serial.println(WiFi.RSSI());
 
-  // Set up the fully client ID
+    seconds = 0;
+    Serial.println("");
+    Serial.println(F("Connected to wifi network"));
+    Serial.print(F("IP address: "));
+    Serial.println(WiFi.localIP());
+    Serial.print(F("Signal [RSSI]: "));
+    Serial.println(WiFi.RSSI());
 
-  byte mac[6]; // the MAC address of your Wifi shield
-  WiFi.macAddress(mac);
-  snprintf(fullClientID, CLIENT_ID_SIZE, "%s-%02x%02x%02x", clientID, mac[3], mac[4], mac[5]);
-  Serial.print(F("Client ID: "));
-  Serial.println(fullClientID);
+    // Set up the fully client ID
 
-  // Set up the Modbus line
-  growattInterface.initGrowatt();
-  Serial.println("Modbus connection is set up");
+    byte mac[6]; // the MAC address of your Wifi shield
+    WiFi.macAddress(mac);
+    snprintf(fullClientID, CLIENT_ID_SIZE, "%s-%02x%02x%02x", clientID, mac[3], mac[4], mac[5]);
+    Serial.print(F("Client ID: "));
+    Serial.println(fullClientID);
 
-  // Create the 1 second timer interrupt
-  os_timer_setfn(&myTimer, timerCallback, NULL);
-  os_timer_arm(&myTimer, 1000, true);
+    // Set up the Modbus line
+    growattInterface.initGrowatt();
+    Serial.println("Modbus connection is set up");
 
-  server.on("/", []() { // Dummy page
-    server.send(200, "text/plain", "Growatt Solar Inverter to MQTT Gateway");
-  });
-  server.begin();
-  Serial.println(F("HTTP server started"));
+  #ifdef AHTXX_SENSOR
+    // AHT15 connection check
+    ath15_connected = sensorAHT15.begin(SDA_PIN, SCL_PIN);
+    if (ath15_connected != true)
+    {
+      Serial.println(F("AHT15 sensor not connected or fail to load calibration coefficient"));
+    }
+  #endif
 
-  // Set up the MQTT server connection
-  if (strlen(mqtt_server) > 0)
-  {
-    mqtt.setServer(mqtt_server, mqtt_server_port);
-    mqtt.setBufferSize(1024);
-    mqtt.setCallback(callback);
-  }
+    // Create the 1 second timer interrupt
+    os_timer_setfn(&myTimer, timerCallback, NULL);
+    os_timer_arm(&myTimer, 1000, true);
 
-  // OTA Firmware Update
-  // Port defaults to 8266
-  // ArduinoOTA.setPort(8266);
+    server.on("/", []() { // Dummy page
+      server.send(200, "text/plain", "Growatt Solar Inverter to MQTT Gateway");
+    });
+    server.begin();
+    Serial.println(F("HTTP server started"));
 
-  // Hostname defaults to esp8266-[ChipID]
-  ArduinoOTA.setHostname(fullClientID);
+    // Set up the MQTT server connection
+    if (strlen(mqtt_server) > 0)
+    {
+      mqtt.setServer(mqtt_server, mqtt_server_port);
+      mqtt.setBufferSize(1024);
+      mqtt.setCallback(callback);
+    }
 
-  // No authentication by default
-  // ArduinoOTA.setPassword((const char *)"123");
+    // OTA Firmware Update
+    // Port defaults to 8266
+    // ArduinoOTA.setPort(8266);
 
-  ArduinoOTA.onStart([]()
+    // Hostname defaults to esp8266-[ChipID]
+    ArduinoOTA.setHostname(fullClientID);
+
+    // No authentication by default
+    // ArduinoOTA.setPassword((const char *)"123");
+
+    ArduinoOTA.onStart([]()
+                       {
+      os_timer_disarm(&myTimer);
+      Serial.println("Start"); });
+
+    ArduinoOTA.onEnd([]()
                      {
-    os_timer_disarm(&myTimer);
-    Serial.println("Start"); });
+      Serial.println("\nEnd");
+      os_timer_arm(&myTimer, 1000, true); });
 
-  ArduinoOTA.onEnd([]()
-                   {
-    Serial.println("\nEnd");
-    os_timer_arm(&myTimer, 1000, true); });
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
+                          { Serial.printf("Progress: %u%%\r", (progress / (total / 100))); });
 
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
-                        { Serial.printf("Progress: %u%%\r", (progress / (total / 100))); });
+    ArduinoOTA.onError([](ota_error_t error)
+                       {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed"); });
 
-  ArduinoOTA.onError([](ota_error_t error)
-                     {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed"); });
+    ArduinoOTA.begin();
 
-  ArduinoOTA.begin();
 }
 
 void loop()
 {
   char value[MAX_JSON_TOPIC_LENGTH];
   char topic[MAX_ROOT_TOPIC_LENGTH];
+#ifdef AHTXX_SENSOR
+  float valueTemp;
+  float valueHum;
+#endif
 
   ArduinoOTA.handle();
 
@@ -527,10 +552,32 @@ void loop()
     // Send MQTT update
     if (strlen(mqtt_server) > 0)
     {
-      snprintf(value, MAX_JSON_TOPIC_LENGTH, "{\"rssi\": %d,\"uptime\": %lu,\"ssid\": \"%s\",\"ip\": \"%d.%d.%d.%d\",\"clientid\": \"%s\",\"version\": \"%s\",\"modbusUpdate\": %d,\"statusUpdate\": %d,\"Wifi check\": %d}", WiFi.RSSI(), uptime, WiFi.SSID().c_str(), WiFi.localIP()[0], WiFi.localIP()[1], WiFi.localIP()[2], WiFi.localIP()[3], fullClientID, buildversion, config.modbus_update_sec, config.status_update_sec, config.wificheck_sec);
+#ifdef AHTXX_SENSOR                                                   // recomended polling frequency 8sec..30sec
+      if (ath15_connected != true)
+      {
+        ath15_connected = sensorAHT15.begin(SDA_PIN, SCL_PIN);
+      }
+      if (ath15_connected == true)
+      {
+        valueTemp = sensorAHT15.readTemperature(AHT10_FORCE_READ_DATA); // read 6-bytes over I2C
+        valueHum = sensorAHT15.readHumidity(AHT10_USE_READ_DATA);
+      }
+      else
+      {
+        valueTemp = 0;
+        valueHum = 0;
+      }
+#ifdef DEBUG_SERIAL
+      Serial.printf("Temperature: %.2f °C      Humidity: %.2f %%\n", valueTemp, valueHum);
+#endif
+      snprintf(value, MAX_JSON_TOPIC_LENGTH, "{\"rssi\":%d,\"uptime\":%lu,\"ssid\":\"%s\",\"ip\":\"%d.%d.%d.%d\",\"clientid\":\"%s\",\"version\":\"%s\",\"modbusUpdate\":%d,\"statusUpdate\":%d,\"Wifi check\":%d,\"temperature\":%.2f,\"humidity\":%.2f}", WiFi.RSSI(), uptime, WiFi.SSID().c_str(), WiFi.localIP()[0], WiFi.localIP()[1], WiFi.localIP()[2], WiFi.localIP()[3], fullClientID, buildversion, config.modbus_update_sec, config.status_update_sec, config.wificheck_sec, valueTemp, valueHum);
+#else
+      snprintf(value, MAX_JSON_TOPIC_LENGTH, "{\"rssi\":%d,\"uptime\":%lu,\"ssid\":\"%s\",\"ip\":\"%d.%d.%d.%d\",\"clientid\":\"%s\",\"version\":\"%s\",\"modbusUpdate\":%d,\"statusUpdate\":%d,\"Wifi check\":%d}", WiFi.RSSI(), uptime, WiFi.SSID().c_str(), WiFi.localIP()[0], WiFi.localIP()[1], WiFi.localIP()[2], WiFi.localIP()[3], fullClientID, buildversion, config.modbus_update_sec, config.status_update_sec, config.wificheck_sec);
+#endif
       snprintf(topic, MAX_ROOT_TOPIC_LENGTH, "%s/%s", topicRoot, "status");
       mqtt.publish(topic, value);
 #ifdef DEBUG_MQTT
+      Serial.println(value);
       Serial.println(F("MQTT status sent"));
 #endif      
     }
@@ -547,4 +594,6 @@ void loop()
     }
     checkWifi = false;
   }
+
+  
 }

@@ -4,7 +4,7 @@ const char buildversion[]="v1.3.0Helge";
 
 #define EE_START_ADDR 0x00 // start address of values stored in the eeprom
 #define EE_INIT_STATE_SIZE 4
-#define EE_INIT_PATTERN { 0xd5, 0xa9, 0xbe, 0xaf }
+#define EE_INIT_PATTERN { 0xd7, 0xa9, 0xbe, 0xaf }
 const uint8_t DefEEpromInit[EE_INIT_STATE_SIZE] = EE_INIT_PATTERN;
 
 typedef struct
