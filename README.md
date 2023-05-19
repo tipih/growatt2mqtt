@@ -24,10 +24,10 @@ Disassemble the connector (see instructions in the user manual) and use PIN3 and
 
 ## Libraries
 The following libraries are used beside the "Standard" ESP8266 libraries:
-- FastLED by Daniel Garcia
 - ModbusMaster by Doc Walker
 - ArduinoOTA
 - SoftwareSerial
+- AHT10
 
 
 ## Topic
@@ -45,6 +45,9 @@ topicroot/write/setEnable | subscribe | ON/OFF | enable/disable the output of th
 topicroot/write/setMaxOutput | subscribe | 0-100 | set the output level of the growatt in percent 
 topicroot/write/setStartVoltage | subscribe || set the minimum voltage oft the MPPT tracker 
 topicroot/write/setModulPower | subscribe |HEX| change the type of inverter. see chapter **ModulPower command**
+topicroot/writeconfig/setStatusUpd | subscribe | 1- 65535 | status meassage send period in sec
+topicroot/writeconfig/setWifiCheck | subscribe | 1- 65535 | check if wifi is connected, period in sec
+topicroot/writeconfig/setModbusUpd | subscribe | 1- 65535 | read register values via modbus, period in sec
 
 ## ModulPower command
 Read or change the type of inverter. e.g. MIC 600TL-X to MIC 1000TL-X.
@@ -103,6 +106,8 @@ D5                                      RO
 D6                                      DI
 5V                                      VCC
 G(GND)                                  GND
+
+Please adapt the Pin Definitions in the settings.h
 ```
 
 ## Videos
