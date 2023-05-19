@@ -7,6 +7,7 @@
 // - ModbusMaster by Doc Walker
 // - ArduinoOTA
 // - SoftwareSerial
+// - AHT10
 // Hardware:
 // - Wemos D1 mini
 // - RS485 to TTL converter: https://www.aliexpress.com/item/1005001621798947.html
