@@ -17,7 +17,7 @@
 
 // Update the below parameters for your project
 // Also check NTP.h for some parameters as well
-const char mqtt_server[] = "192.168.7.145";    // MQTT server
+const char mqtt_server[] = "";    // MQTT server
 const int mqtt_server_port = 1883;             // MQTT server port, default is 1883
 const char mqtt_user[] = "none";               // MQTT userid
 const char mqtt_password[] = "none";        // MQTT password
