@@ -50,7 +50,9 @@ bool ath15_connected;
 #endif 
 
 #define CLIENT_ID_SIZE (sizeof(clientID) + 7) // 3*2 char = 6 + '-'
+#define TOPPIC_ROOT_SIZE (sizeof(topicRootStart) + 7) // 3*2 char = 6 + '-'
 char fullClientID[CLIENT_ID_SIZE];
+char topicRoot[TOPPIC_ROOT_SIZE]; // MQTT root topic for the device, + client ID
 
 os_timer_t myTimer;
 //ESP8266WebServer server(80);
@@ -433,7 +435,6 @@ void setup()
     Serial.println("");
     Serial.println("Connected to WiFi");
     Serial.println("IPAddress: " + WiFi.localIP().toString());
-    Serial.println("");
     Serial.print("Signal [RSSI]: ");
     Serial.println(WiFi.RSSI());
   }
@@ -446,6 +447,8 @@ void setup()
   byte mac[6]; // the MAC address of your Wifi shield
   WiFi.macAddress(mac);
   snprintf(fullClientID, CLIENT_ID_SIZE, "%s-%02x%02x%02x", clientID, mac[3], mac[4], mac[5]);
+  snprintf(topicRoot, TOPPIC_ROOT_SIZE, "%s-%02x%02x%02x", clientID, mac[3], mac[4], mac[5]);
+
   Serial.print(F("Client ID: "));
   Serial.println(fullClientID);
 

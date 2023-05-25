@@ -17,14 +17,12 @@
 
 // Update the below parameters for your project
 // Also check NTP.h for some parameters as well
-//const char ssid[] = "xxx";          // Wifi SSID
-//const char password[] = "xxx";  // Wifi password
-const char mqtt_server[] = "xxx";    // MQTT server
+const char mqtt_server[] = "192.168.7.145";    // MQTT server
 const int mqtt_server_port = 1883;             // MQTT server port, default is 1883
 const char mqtt_user[] = "none";               // MQTT userid
 const char mqtt_password[] = "none";        // MQTT password
 const char clientID[] = "growatt";       // MQTT client ID
-const char topicRoot[] = "growatt";      // MQTT root topic for the device, keep / at the end
+const char topicRootStart[] = "growatt";      // MQTT root topic for the device, + client ID
 
 // Comment the entire second below for dynamic IP (including the define)
 // #define FIXEDIP   1
