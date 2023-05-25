@@ -104,9 +104,6 @@
 	</div>
 	<div class="row">
 		<div class="column text-sm text-muted">
-			<p class="text-center">
-				Select the SSID and enter passcode.
-			</p>
 		</div>
 	</div>
 </div>
