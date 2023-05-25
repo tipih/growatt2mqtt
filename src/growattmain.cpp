@@ -14,8 +14,17 @@
 // - To power from mains: Hi-Link 5V power supply (https://www.aliexpress.com/item/1005001484531375.html), fuseholder and 1A fuse, and varistor
 
 #include <Arduino.h>
+#if defined(ESP8266)
 #include <ESP8266WiFi.h>      // Wifi connection
-#include <ESP8266WebServer.h> // Web server for general HTTP response
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+//#include <ESP8266WebServer.h> // Web server for general HTTP response
+#elif defined(ESP32)
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#endif
+#include <ESPConnect.h>
 #include <PubSubClient.h>     // MQTT support
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
@@ -23,6 +32,7 @@
 #include "settings.h"
 #include "growattInterface.h"
 #include <EEPROM.h>
+
 #ifdef AHTXX_SENSOR
 #include <AHT10.h>
 #include <Wire.h>
@@ -43,7 +53,8 @@ bool ath15_connected;
 char fullClientID[CLIENT_ID_SIZE];
 
 os_timer_t myTimer;
-ESP8266WebServer server(80);
+//ESP8266WebServer server(80);
+AsyncWebServer server(80);
 WiFiClient espClient;
 PubSubClient mqtt(mqtt_server, mqtt_server_port, espClient);
 
@@ -404,49 +415,71 @@ void setup()
   Serial.printf("Status Update: %d sec\n", config.status_update_sec);
   Serial.printf("Wifi Check: %d sec\n", config.wificheck_sec);
 #endif
+
   // Connect to Wifi
-  WiFi.mode(WIFI_STA);
 
-#ifdef FIXEDIP
-  // Configures static IP address
-  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS))
+  //  AutoConnect AP - Configure SSID and password for Captive Portal
+  ESPConnect.autoConnect("ESPConfig");
+  
+// Begin connecting to previous WiFi or start autoConnect AP if unable to connect
+  
+  if (ESPConnect.begin(&server))
   {
-    Serial.println("STA Failed to configure");
+    Serial.println("Connected to WiFi");
+    Serial.println("IPAddress: " + WiFi.localIP().toString());
   }
-#endif
+  else
+  {
+    Serial.println("Failed to connect to WiFi");
+  }
 
-  WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED)
-    {
-      delay(1000);
-      Serial.print(F("."));
-      seconds++;
-      if (seconds > 180)
+  server.on("/", HTTP_GET, [&](AsyncWebServerRequest *request)
+            { request->send(200, "text/plain", "Hello from ESP"); });
+
+  server.begin();
+
+  //WiFi.mode(WIFI_STA);
+  /*
+  #ifdef FIXEDIP
+    // Configures static IP address
+    //if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS))
+    //{
+    //  Serial.println("STA Failed to configure");
+    //}
+  #endif
+
+    WiFi.begin(ssid, password);
+      while (WiFi.status() != WL_CONNECTED)
       {
-        // reboot the ESP if cannot connect to wifi
-        ESP.restart();
+        delay(1000);
+        Serial.print(F("."));
+        seconds++;
+        if (seconds > 180)
+        {
+          // reboot the ESP if cannot connect to wifi
+          ESP.restart();
+        }
       }
-    }
 
-    seconds = 0;
-    Serial.println("");
-    Serial.println(F("Connected to wifi network"));
-    Serial.print(F("IP address: "));
-    Serial.println(WiFi.localIP());
-    Serial.print(F("Signal [RSSI]: "));
-    Serial.println(WiFi.RSSI());
+      seconds = 0;
+      Serial.println("");
+      Serial.println(F("Connected to wifi network"));
+      Serial.print(F("IP address: "));
+      Serial.println(WiFi.localIP());
+      Serial.print(F("Signal [RSSI]: "));
+      Serial.println(WiFi.RSSI());
 
-    // Set up the fully client ID
+      // Set up the fully client ID
 
-    byte mac[6]; // the MAC address of your Wifi shield
-    WiFi.macAddress(mac);
-    snprintf(fullClientID, CLIENT_ID_SIZE, "%s-%02x%02x%02x", clientID, mac[3], mac[4], mac[5]);
-    Serial.print(F("Client ID: "));
-    Serial.println(fullClientID);
-
-    // Set up the Modbus line
-    growattInterface.initGrowatt();
-    Serial.println("Modbus connection is set up");
+      byte mac[6]; // the MAC address of your Wifi shield
+      WiFi.macAddress(mac);
+      snprintf(fullClientID, CLIENT_ID_SIZE, "%s-%02x%02x%02x", clientID, mac[3], mac[4], mac[5]);
+      Serial.print(F("Client ID: "));
+      Serial.println(fullClientID);
+  */
+  // Set up the Modbus line
+  growattInterface.initGrowatt();
+  Serial.println("Modbus connection is set up");
 
   #ifdef AHTXX_SENSOR
     // AHT15 connection check
@@ -461,11 +494,11 @@ void setup()
     os_timer_setfn(&myTimer, timerCallback, NULL);
     os_timer_arm(&myTimer, 1000, true);
 
-    server.on("/", []() { // Dummy page
-      server.send(200, "text/plain", "Growatt Solar Inverter to MQTT Gateway");
-    });
-    server.begin();
-    Serial.println(F("HTTP server started"));
+    //server.on("/", []() { // Dummy page
+    //  server.send(200, "text/plain", "Growatt Solar Inverter to MQTT Gateway");
+    //});
+    //server.begin();
+    //Serial.println(F("HTTP server started"));
 
     // Set up the MQTT server connection
     if (strlen(mqtt_server) > 0)
@@ -523,7 +556,7 @@ void loop()
   ArduinoOTA.handle();
 
   // Handle HTTP server requests
-  server.handleClient();
+  //server.handleClient();
 
   // Handle MQTT connection/reconnection
   if (strlen(mqtt_server) > 0)
