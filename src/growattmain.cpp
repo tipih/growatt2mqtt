@@ -172,6 +172,11 @@ void loadEEpromData()
     config.status_update_sec = UPDATE_STATUS;
     config.wificheck_sec = WIFICHECK;
     saveConfig();
+    ESP.eraseConfig();
+#ifdef DEBUG_SERIAL
+    delay(3000);
+    Serial.println(F("Reset eesprom values to default and clean Wifi settings"));
+#endif
   }
 }
 
@@ -427,7 +432,7 @@ void setup()
   }
 #endif
   //  AutoConnect AP - Configure SSID and password for Captive Portal
-  ESPConnect.autoConnect("ESPConfig");
+  ESPConnect.autoConnect("Growatt2MQTT");
   
 // Begin connecting to previous WiFi or start autoConnect AP if unable to connect
   if (ESPConnect.begin(&server))

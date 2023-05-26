@@ -104,6 +104,9 @@
 	</div>
 	<div class="row">
 		<div class="column text-sm text-muted">
+			<p class="text-center">
+				Growatt Solar Inverter to MQTT Gateway
+			</p>
 		</div>
 	</div>
 </div>

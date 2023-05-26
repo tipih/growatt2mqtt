@@ -21,14 +21,15 @@
 #include "espconnect_webpage.h"
 
 /* Library Default Settings */
-#define ESPCONNECT_DEBUG 1
+// #define ESPCONNECT_DEBUG 
 
 #define DEFAULT_CONNECTION_TIMEOUT 30000
 #define DEFAULT_PORTAL_TIMEOUT 180000
 
 
-#if ESPCONNECT_DEBUG == 1
-  #define ESPCONNECT_SERIAL(x) Serial.print("[ESPConnect]["+String(millis())+"] "+x)
+#if ESPCONNECT_DEBUG
+  //#define ESPCONNECT_SERIAL(x) Serial.print("[Gowatt2MQTT]["+String(millis())+"] "+x)
+    #define ESPCONNECT_SERIAL(x) Serial.print(x)
 #else
   #define ESPCONNECT_SERIAL(x)
 #endif

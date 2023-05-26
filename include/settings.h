@@ -12,7 +12,7 @@
 #define SCL_PIN         5
 #define SDA_PIN         4
 #define UPDATE_MODBUS   10         // 1: modbus device is read every second and data are anounced via mqtt
-#define UPDATE_STATUS   10        // 10: status mqtt message is sent every 10 seconds
+#define UPDATE_STATUS   30        // 10: status mqtt message is sent every 10 seconds
 #define WIFICHECK       1           // 1: every second
 
 // Update the below parameters for your project
