@@ -28,7 +28,13 @@ The following libraries are used beside the "Standard" ESP8266 libraries:
 - ArduinoOTA
 - SoftwareSerial
 - AHT10
+- ESPConnect
 
+## Wifi
+If Wifi ist not configured, ESP starts in AP mode and a captive portal will be provided using http://192.168.4.1 as URL in your Browser. 
+Connect to the AP (SSID: Growatt2MQTT, no passsword), select your SSID and enter password.
+SSID and Password will be stored in eeprom.
+To reset the Wifi credentials, change minimum one of the numbers in globals.h (EE_INIT_PATTERN), compile and load firmware again.
 
 ## Topic
 the topicroot can be changed in the settings.h file (default is growatt).
