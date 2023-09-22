@@ -134,7 +134,7 @@ uint8_t growattIF::ReadInputRegisters() {
       //  32 " Module Hot
 
 
-      modbusdata.faultbitcode = ((growattInterface.getResponseBuffer(105 - 64) << 16) | growattInterface.getResponseBuffer(106 - 64));
+      modbusdata.faultbitcode = ((growattInterface.getResponseBuffer(106 - 64) << 16) | growattInterface.getResponseBuffer(107 - 64));
       //  0x00000001 
       //  0x00000002 Communication error
       //  0x00000004 
