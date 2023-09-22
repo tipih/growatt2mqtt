@@ -27,7 +27,7 @@ The following libraries are used beside the "Standard" ESP8266 libraries:
 - ModbusMaster by Doc Walker
 - ArduinoOTA
 - SoftwareSerial
-- AHT10
+- AHT10 (Performance20: added support of AHT10 temperature+humidity sensor used in my hardware implementation)
 - ESPConnect
 
 ## Wifi
