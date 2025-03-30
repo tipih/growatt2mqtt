@@ -1,6 +1,13 @@
+#include <Arduino.h>
+#include <stdint.h>
 unsigned long uptime, seconds;
 bool holdingregisters = true;
-const char buildversion[]="v1.3.0Helge";
+const char buildversion[]="v1.3.1Rahr";
+
+#ifdef ARDUINO_ESP32_DEV
+    typedef uint16_t uint16;
+#endif
+
 
 #define EE_START_ADDR 0x00 // start address of values stored in the eeprom
 #define EE_INIT_STATE_SIZE 4

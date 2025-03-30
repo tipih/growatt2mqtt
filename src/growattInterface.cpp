@@ -51,9 +51,14 @@ void growattIF::postTransmission() {
 uint8_t growattIF::ReadInputRegisters() {
   uint8_t result;
 
+   #ifndef ARDUINO_ESP32_DEV
   ESP.wdtDisable();
   result = growattInterface.readInputRegisters(0 * 64, 64);
   ESP.wdtEnable(1);
+  #else
+  result = growattInterface.readInputRegisters(0 * 64, 64);
+  #endif
+
 
   if (result == growattInterface.ku8MBSuccess)   
   {
@@ -90,9 +95,15 @@ uint8_t growattIF::ReadInputRegisters() {
   }
   delay(10); // if not bus error occours
   // next register block
+  #ifndef ARDUINO_ESP32_DEV
   ESP.wdtDisable();
-  result = growattInterface.readInputRegisters(1 * 64, 64);
-  ESP.wdtEnable(1);
+  #else
+    result = growattInterface.readInputRegisters(1 * 64, 64);
+  #endif
+
+  #ifndef ARDUINO_ESP32_DEV
+    ESP.wdtEnable(1);
+  #endif
 
   if (result == growattInterface.ku8MBSuccess) 
   { // register 64 -127
@@ -266,9 +277,13 @@ void growattIF::InputRegistersToJson(char* json)
   {
     uint8_t result;
     
+#ifndef ARDUINO_ESP32_DEV
     ESP.wdtDisable();
     result = growattInterface.readHoldingRegisters(0 * 64, 64);
     ESP.wdtEnable(1);
+#else
+    result = growattInterface.readHoldingRegisters(0 * 64, 64);
+#endif 
 
     if (result == growattInterface.ku8MBSuccess)
     {
@@ -331,9 +346,13 @@ void growattIF::InputRegistersToJson(char* json)
      return result;
     }
     delay(10);
+#ifndef ARDUINO_ESP32_DEV
     ESP.wdtDisable();
     result = growattInterface.readHoldingRegisters(1 * 64, 64);
     ESP.wdtEnable(1);
+#else
+    result = growattInterface.readHoldingRegisters(1 * 64, 64);
+#endif
 
     if (result == growattInterface.ku8MBSuccess)
     {

@@ -21,6 +21,8 @@
 //#include <ESP8266WebServer.h> // Web server for general HTTP response
 #elif defined(ESP32)
 #include <WiFi.h>
+#include <nvs_flash.h>
+
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #endif
@@ -54,7 +56,12 @@ bool ath15_connected;
 char fullClientID[CLIENT_ID_SIZE];
 char topicRoot[TOPPIC_ROOT_SIZE]; // MQTT root topic for the device, + client ID
 
-os_timer_t myTimer;
+
+#ifndef ARDUINO_ESP32_DEV
+  os_timer_t myTimer;
+#else
+  hw_timer_t* myTimer;
+#endif
 //ESP8266WebServer server(80);
 AsyncWebServer server(80);
 WiFiClient espClient;
@@ -66,6 +73,43 @@ AHT10 sensorAHT15(AHT10_ADDRESS_0X38);
 
 void callback(char *topic, byte *payload, unsigned int length);
 growattIF growattInterface(MAX485_RE_NEG, MAX485_DE, MAX485_RX, MAX485_TX);
+
+
+
+// This is the 1 second timer callback function
+
+#ifdef ESP32
+void IRAM_ATTR timerCallback()
+{
+  seconds++;
+  uptime++;
+
+  if (seconds % config.modbus_update_sec == 0)
+    updateRegister = true;
+
+  if (seconds % config.status_update_sec == 0)
+    updateStatus = true;
+
+  if (seconds % config.wificheck_sec == 0)
+    checkWifi = true;
+}
+#else
+void timerCallback(void *pArg)
+{
+  seconds++;
+  uptime++;
+
+  if (seconds % config.modbus_update_sec == 0)
+    updateRegister = true;
+
+  if (seconds % config.status_update_sec == 0)
+    updateStatus = true;
+
+  if (seconds % config.wificheck_sec == 0)
+    checkWifi = true;
+}
+#endif
+
 
 void ReadInputRegisters()
 {
@@ -135,21 +179,7 @@ void ReadHoldingRegisters()
   digitalWrite(STATUS_LED, 1);
 }
 
-// This is the 1 second timer callback function
-void timerCallback(void *pArg)
-{
-  seconds++;
-  uptime++;
 
-  if (seconds % config.modbus_update_sec == 0)
-    updateRegister = true;
-
-  if (seconds % config.status_update_sec == 0)
-    updateStatus = true;
-
-  if (seconds % config.wificheck_sec == 0)
-    checkWifi = true;
-}
 
 void saveConfig()
 {
@@ -172,10 +202,19 @@ void loadEEpromData()
     config.status_update_sec = UPDATE_STATUS;
     config.wificheck_sec = WIFICHECK;
     saveConfig();
-    ESP.eraseConfig();
+    #ifndef ESP32
+    ESP.eraseConfig(); // clean wifi settings
+    #else
+     nvs_flash_erase();
+    nvs_flash_init();
+    Serial.println("NVS partition erased.");
+
+    #endif
+
 #ifdef DEBUG_SERIAL
     delay(3000);
     Serial.println(F("Reset eesprom values to default and clean Wifi settings"));
+    
 #endif
   }
 }
@@ -471,8 +510,15 @@ void setup()
   #endif
 
     // Create the 1 second timer interrupt
+#ifndef ESP32 
     os_timer_setfn(&myTimer, timerCallback, NULL);
     os_timer_arm(&myTimer, 1000, true);
+#else
+    myTimer = timerBegin(0, 80, true); // Configure the timer
+    timerAttachInterrupt(myTimer, &timerCallback, true); // Attach an interrupt
+    timerAlarmWrite(myTimer, 1000000, true); // Set an alarm
+    timerAlarmEnable(myTimer); // Enable the timer
+#endif
 
     server.on("/", HTTP_GET, [&](AsyncWebServerRequest *request)
               { request->send(200, "text/plain", "Growatt Solar Inverter to MQTT Gateway"); });
@@ -500,13 +546,25 @@ void setup()
 
     ArduinoOTA.onStart([]()
                        {
+  #ifndef ESP32
       os_timer_disarm(&myTimer);
-      Serial.println("Start"); });
+  #else
+      timerAlarmDisable(myTimer);
+  #endif
+     Serial.println("Start"); });
 
     ArduinoOTA.onEnd([]()
                      {
       Serial.println("\nEnd");
-      os_timer_arm(&myTimer, 1000, true); });
+    
+      #ifndef ESP32
+      os_timer_arm(&myTimer, 1000, true); 
+      #else
+            timerAlarmEnable(myTimer);
+
+      #endif
+    
+    });
 
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
                           { Serial.printf("Progress: %u%%\r", (progress / (total / 100))); });
